@@ -160,13 +160,6 @@ History Page (Resolved Complaints)
 ```
 support-ticket-classification/
 |
-|-- model/
-|   |-- fasttext_model.ftz          Trained and compressed model
-|
-|-- data/
-|   |-- train.txt                   Training data in FastText format
-|   |-- test.txt                    Testing data in FastText format
-|
 |-- templates/
 |   |-- home.html                   Complaint submission and result page
 |   |-- job.html                    Jobs dashboard
@@ -183,6 +176,11 @@ support-ticket-classification/
 |-- README.md                       Project documentation
 ```
 
+> **Note:** The trained model file (fasttext_model.ftz) and dataset
+> files (train.txt, test.txt) are not included in this repository
+> due to their large file size. The dataset is publicly available
+> on Kaggle — CFPB Consumer Complaint Dataset.
+
 ---
 
 ## Installation
@@ -191,43 +189,6 @@ support-ticket-classification/
 
 - Python 3.8 or above
 - pip package manager
-
-### Steps
-
-```bash
-# Clone the repository
-git clone https://github.com/your-username/support-ticket-classification.git
-
-# Navigate to the project directory
-cd support-ticket-classification
-
-# Install required dependencies
-pip install -r requirements.txt
-```
-
----
-
-## Usage
-
-### Train the Model
-
-```bash
-python train.py
-```
-
-### Run the Web Application
-
-```bash
-python app.py
-```
-
-### Evaluate the Model
-
-```bash
-python EvaluationMetrics.py
-```
-
----
 
 ## Technology Stack
 
@@ -283,9 +244,9 @@ python EvaluationMetrics.py
 MSc Data Science (2025 - 2027)
 Alliance University, Bangalore, India
 
-GitHub: github.com/your-username
+GitHub: github.com/AutomationArtist01
 Email: rohithgurrala14@gmail.com
-LinkedIn: linkedin.com/in/your-linkedin
+LinkedIn: linkedin.com/in/rohith-kumar-gurrala/
 
 ---
 
