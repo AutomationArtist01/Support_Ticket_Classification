@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>History</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand">ComplaintDesk</div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">Home</a>
+    <a href="/jobs" class="nav-link">Jobs</a>
+    <a href="/history" class="nav-link active">History</a>
+  </div>
+</nav>
+
+<div class="container">
+  <h2>Resolved Complaints</h2>
+  <div id="history-list"></div>
+</div>
+
+<script>
+async function loadHistory() {
+  const res = await fetch('/api/history');
+  const items = await res.json();
+
+  const list = document.getElementById('history-list');
+
+  if (items.length === 0) {
+    list.innerHTML = "<p>No resolved complaints yet</p>";
+    return;
+  }
+
+  list.innerHTML = items.map(c => `
+    <div class="complaint-item">
+      <div class="ci-name">${c.name}</div>
+      <div class="ci-text">${c.original_text}</div>
+      <div class="ci-meta">Resolved ✔</div>
+    </div>
+  `).join('');
+}
+
+loadHistory();
+</script>
+
+</body>
+</html>

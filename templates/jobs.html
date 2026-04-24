@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jobs Dashboard — ComplaintDesk</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="brand-name">ComplaintDesk</span>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">Home</a>
+    <a href="/jobs" class="nav-link active">Jobs Dashboard</a>
+    <a href="/history" class="nav-link">History</a>
+  </div>
+</nav>
+
+<div style="max-width:900px;margin:0 auto;padding:36px 20px;">
+
+  <div class="page-header">
+    <h1>Jobs Dashboard</h1>
+    <p class="subtitle">Click a department to view its complaints.</p>
+  </div>
+
+  <!-- LABEL CARDS -->
+  <div class="label-grid" id="label-grid">
+    {% for key, name in labels.items() %}
+    <div class="label-card" id="lcard-{{ key }}" onclick="selectLabel('{{ key }}', '{{ name }}')">
+
+      <!-- OPEN COUNT -->
+      <div style="font-size:22px;font-weight:700" id="open-{{ key }}">0</div>
+
+      <!-- RESOLVED COUNT -->
+      <div style="font-size:12px;color:var(--muted)">
+        resolved: <span id="resolved-{{ key }}">0</span>
+      </div>
+
+      <div class="label-card-name">{{ name }}</div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- COMPLAINTS LIST -->
+  <div class="complaints-section" id="complaints-section" style="display:none;">
+    <div class="complaints-header">
+      <h2 id="section-title">Complaints</h2>
+      <button class="btn btn-outline" onclick="clearSelection()">← All Departments</button>
+    </div>
+    <div id="complaints-list"></div>
+  </div>
+
+</div>
+
+<script>
+const LABELS = {{ labels | tojson }};
+let activeLabel = null;
+
+async function loadCounts() {
+  const res   = await fetch('/api/complaints');
+  const items = await res.json();
+
+  const openCounts = {};
+  const resolvedCounts = {};
+
+  items.forEach(c => {
+
+    if (c.status === "open" || c.status === "redirected") {
+      openCounts[c.label_key] = (openCounts[c.label_key] || 0) + 1;
+    } 
+    else if (c.status === "resolved") {
+      resolvedCounts[c.label_key] = (resolvedCounts[c.label_key] || 0) + 1;
+    }
+
+  });
+
+  Object.keys(LABELS).forEach(key => {
+    const openEl = document.getElementById('open-' + key);
+    const resEl  = document.getElementById('resolved-' + key);
+
+    if (openEl) openEl.textContent = openCounts[key] || 0;
+    if (resEl)  resEl.textContent  = resolvedCounts[key] || 0;
+  });
+}
+
+// SELECT LABEL
+async function selectLabel(key, name) {
+  document.querySelectorAll('.label-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('lcard-' + key).classList.add('selected');
+
+  activeLabel = key;
+
+  document.getElementById('section-title').textContent = name + ' — Complaints';
+  document.getElementById('complaints-section').style.display = 'block';
+  document.getElementById('complaints-list').innerHTML = '<p style="color:var(--muted);padding:16px 0">Loading…</p>';
+
+  await loadComplaints(key);
+}
+
+// LOAD COMPLAINTS (UNCHANGED UI)
+async function loadComplaints(key) {
+  const res   = await fetch('/api/complaints?label=' + key);
+  const items = await res.json();
+  const list  = document.getElementById('complaints-list');
+
+  if (items.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>No complaints in this department yet.</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(c => `
+    <div class="complaint-item" id="ci-${c.id}">
+      <div class="ci-top">
+        <div>
+          <div class="ci-name">${escHtml(c.name)}</div>
+          <div class="ci-meta">Account: ${escHtml(c.account)} · ${c.created_at} · #${c.id}</div>
+        </div>
+        <span class="status-badge status-${c.status}">${c.status}</span>
+      </div>
+
+      <div class="ci-text">${escHtml(c.original_text)}</div>
+
+      <div class="ci-actions">
+        <button class="btn btn-success" onclick="resolve('${c.id}')" ${c.status==='resolved' ? 'disabled' : ''}>
+          ✓ Issue Resolved
+        </button>
+
+        <select id="redir-${c.id}" class="select-input">
+          ${Object.entries(LABELS).map(([k,v]) =>
+            `<option value="${k}" ${k===c.label_key ? 'selected' : ''}>${v}</option>`
+          ).join('')}
+        </select>
+
+        <button class="btn btn-outline" onclick="redirect('${c.id}')">
+          ↩ Wrong Person
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// RESOLVE
+async function resolve(id) {
+  await fetch(`/api/resolve/${id}`, { method: 'POST' });
+  loadCounts();
+  loadComplaints(activeLabel);
+}
+
+// REDIRECT
+async function redirect(id) {
+  const newLabel = document.getElementById(`redir-${id}`).value;
+
+  await fetch(`/api/redirect/${id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_label: newLabel })
+  });
+
+  loadCounts();
+  loadComplaints(activeLabel);
+}
+
+// CLEAR
+function clearSelection() {
+  document.querySelectorAll('.label-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('complaints-section').style.display = 'none';
+  activeLabel = null;
+}
+
+// SAFE HTML
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// AUTO REFRESH
+loadCounts();
+setInterval(() => {
+  loadCounts();
+  if (activeLabel) loadComplaints(activeLabel);
+}, 15000);
+</script>
+
+</body>
+</html>

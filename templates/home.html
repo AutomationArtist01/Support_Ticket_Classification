@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Complaints Portal</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="brand-name">ComplaintDesk</span>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link active">Home</a>
+    <a href="/jobs" class="nav-link">Jobs Dashboard</a>
+    <a href="/history" class="nav-link">History</a>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="container">
+  <div class="page-header">
+    <h1>Submit a Complaint</h1>
+    <p class="subtitle">Fill in the form below. Your complaint will be automatically routed.</p>
+  </div>
+
+  <!-- Form -->
+  <div class="card form-card">
+    <div class="form-group">
+      <label>Full Name</label>
+      <input type="text" id="name" placeholder="John Doe">
+    </div>
+
+    <div class="form-group">
+      <label>Account Number</label>
+      <input type="text" id="account" placeholder="ACC-XXXXXXXXXX">
+    </div>
+
+    <div class="form-group">
+      <label>Describe your issue</label>
+      <textarea id="issue" rows="5" placeholder="Type your complaint here..."></textarea>
+    </div>
+
+    <button class="btn btn-primary" id="submit-btn" onclick="submitComplaint()">
+      <span id="btn-text">Submit Complaint</span>
+      <span id="btn-loader" class="loader hidden"></span>
+    </button>
+  </div>
+
+  <!-- Result -->
+  <div class="card result-card hidden" id="result-card">
+
+    <div class="result-header">
+      <div class="result-icon">✓</div>
+      <div>
+        <h2>Complaint Submitted</h2>
+        <p class="muted">Complaint #<span id="result-id"></span></p>
+      </div>
+    </div>
+
+    <div class="pipeline-steps">
+      <div class="step">
+        <span class="step-label">Predicted Department</span>
+        <span class="step-value dept-badge" id="pred-dept"></span>
+      </div>
+    </div>
+
+
+  </div>
+</main>
+
+<script>
+  
+let currentComplaintId = null;
+
+async function submitComplaint() {
+  const name    = document.getElementById('name').value.trim();
+  const account = document.getElementById('account').value.trim();
+  const text    = document.getElementById('issue').value.trim();
+
+  if (!name || !account || !text) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  setBtnLoading(true);
+
+  try {
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name, account, text })
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("SERVER ERROR:", errText);
+      alert("Server error. Check backend.");
+      return;
+    }
+
+    const data = await res.json();
+
+    console.log("RESPONSE:", data); 
+
+    currentComplaintId = data.complaint_id;
+
+    showResult(data);
+
+    document.getElementById('name').value = '';
+    document.getElementById('account').value = '';
+    document.getElementById('issue').value = '';
+
+  } catch (e) {
+    console.error("FETCH ERROR:", e);
+    alert("Network error. Please try again.");
+  }
+
+  setBtnLoading(false);
+}
+
+function showResult(data) {
+  if (!data) {
+    console.error("No data received");
+    return;
+  }
+
+  // ID
+  document.getElementById('result-id').textContent =
+    data.complaint_id || "N/A";
+
+  const dept = document.getElementById('pred-dept');
+  dept.textContent = data.label_name || "Unknown";
+  dept.className = 'step-value dept-badge';
+  if (data.label_key) {
+    dept.classList.add('badge-' + data.label_key);
+  }
+
+  document.getElementById('result-card').classList.remove('hidden');
+}
+
+
+function setBtnLoading(on) {
+  document.getElementById('btn-text').style.display = on ? 'none' : 'inline';
+  document.getElementById('btn-loader').style.display = on ? 'inline' : 'none';
+}
+</script>
+
+</body>
+</html>
